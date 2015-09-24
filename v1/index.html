@@ -1,0 +1,133 @@
+<html>
+  <head>
+    <script src='https://cdn.firebase.com/js/client/2.2.1/firebase.js'></script>
+    <script src="https://cdn.firebase.com/libs/geofire/3.2.2/geofire.min.js"></script>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBm58egAUOadPo5D7aGStqWvybk6A68JQE&callback=initMap"
+        async defer></script>
+        <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="position:fixed;z-index:1000;background-color:grey;opacity:.8;width:60%;right:0px">
+      <h1>Civic Issues in New Haven, CT</h1>
+      <div style="width:40%;float:left">
+        <select id="select">
+          <option class="option" value="0" name="">Select a Category</option>
+          <option class="option" value="0" name="Tree Trimming Issues">Tree Trimming</option>
+          <option class="option" value="1" name="Pothole Issues">Potholes</option>
+          <option class="option" value="2" name="Sidewalks and Curb Damage Issues">Sidewalks and Curb Damage</option>
+          <option class="option" value="3" name="Traffic and Pedestrian Signal Issues">Traffic and Pedestrian Signals</option>
+        </select></br>
+        <button id="button">next cluster</button></br>
+        <h3 id="header"></h3>
+      </div>
+      <div style="width:300px;float:right">
+        <div style="">
+          <div style="height:20px;width:20px;background-color:red;float:left"></div>
+          <p style="width:;float:left;margin-top:0">Open (Unsolved)</p>
+        </div></br></br>
+        <div style="">
+          <div style="height:20px;width:20px;background-color:blue;float:left"></div>
+          <p style="float:left;margin-top:0">Resolved or Acknowledged</p>
+        </div>
+      </div>
+    </div>
+    <div id='map' style="width:100%;position:relative"></div>
+    <script>
+
+//      var geoFire = new GeoFire(firebaseRef);
+//      var ref = geoFire.ref();
+//       var geoQuery = geoFire.query({
+//   center: [10.38, 2.41],
+//   radius: 10.5
+// });
+//
+// var center = geoQuery.center();  // center === [10.38, 2.41]
+// https://github.com/firebase/geofire-js/blob/master/examples/sfVehicles/js/sfVehicles.js
+var map;
+function initMap(category) {
+  // Create a map object and specify the DOM element for display.
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 41.31, lng: -72.898197},
+    scrollwheel: false,
+    zoom: 8
+  });
+}
+//$(document).load(function(){
+  var cluster_ind=0;
+  var request_type_ind=0;
+  $("#select").on("change",function(){
+    request_type_ind=parseInt($(this).val());
+    cluster_ind=0;
+    $("#header").text($('option:selected', this).attr('name'));
+  });
+
+
+  $("#button").on("click",function(){
+    var myDataRef = new Firebase('https://civicissues.firebaseio.com/'+request_type_ind.toString()+'/'+cluster_ind.toString());
+
+    myDataRef.once("value",function(snap){
+
+      var geo_data=[];
+      var meta_data=[];
+      var data = snap.val()
+      for (key in data){
+        //geo_data.push({"lat":data[key]["geo"][1],"lng":data[key]["geo"][0]})
+        geo_data.push(new google.maps.LatLng(data[key]["geo"][1],data[key]["geo"][0]));
+        meta_data.push(data[key]["meta"])
+      }var new_data=[];
+      var data = snap.val()
+
+      var latlngbounds = new google.maps.LatLngBounds();
+
+      var i = 0
+
+      geo_data.forEach(function(loc){
+        latlngbounds.extend(loc);
+        var color = "blue";
+        if (meta_data[i]['status']==="Open"){color="red"}
+        var Circle = new google.maps.Circle({
+          strokeColor: color,
+          strokeOpacity: 0.8,
+          strokeWeight: .5,
+          fillColor: color,
+          fillOpacity: 0.35,
+          map: map,
+          center: loc,
+          radius: 4
+        });
+        var meta = meta_data[i]
+        var contentString = "<h3>"+meta["address"]+"<h3></br>"
+          +"<h1>"+meta["summary"]+"</h1></br>"
+          +"<p>"+meta["description"]+"</p></br>"
+        var infowindow = new google.maps.InfoWindow({
+          content: contentString
+        });
+
+        Circle.addListener("click",function(){
+          infowindow.open(map,this);
+        });
+
+        map.setCenter(latlngbounds.getCenter());
+        map.fitBounds(latlngbounds);
+
+        i+=1;
+      });
+      //console.log(geo_data);
+    });
+    cluster_ind+=1
+  });
+//});
+
+    </script>
+  </body>
+</html>
